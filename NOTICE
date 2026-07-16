@@ -1,0 +1,48 @@
+tron2_rl_lab
+Copyright (c) 2024-2026 LimX Dynamics Inc.
+
+This product bundles a reinforcement-learning training stack for the LimX
+TRON2A bipedal robot family, targeting NVIDIA Isaac Sim / Isaac Lab. It
+contains LimX-authored Isaac Lab extension code, LimX-authored USD / STL
+robot assets, and third-party components carried in-tree. The first-party
+material is licensed under the Apache License, Version 2.0 unless a
+narrower license is stated in the file's own header; see the top-level
+`LICENSE` file for the full Apache-2.0 text.
+
+You may not use these files except in compliance with the applicable
+license. You may obtain a copy of the Apache License, Version 2.0 at:
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Attribution for third-party and derived components (non-exhaustive; see
+`THIRD_PARTY_NOTICES.md` for the authoritative list and per-file
+provenance):
+
+- NVIDIA Corporation and the Isaac Lab Project Developers — Isaac Sim
+  and Isaac Lab provide the runtime, task / manager framework, and
+  simulation APIs on which `exts/bipedal_locomotion/` is built. Portions
+  of the extension code, configuration patterns, and the boilerplate
+  currently reproduced at `LICENSE:189-201` are derived from or
+  templated on Isaac Lab. `⚠ TO CONFIRM` — see
+  `THIRD_PARTY_NOTICES.md` §4.
+
+- ETH Zurich and NVIDIA Corporation — the vendored `rsl_rl/` directory
+  is a fork of `leggedrobotics/rsl_rl` (BSD-3-Clause). Upstream
+  copyright notices and the BSD-3-Clause text are retained in
+  `rsl_rl/setup.py` and (where applicable) individual source headers.
+  The precise fork commit and the LimX-side diff versus upstream are
+  `⚠ TO CONFIRM`; see `THIRD_PARTY_NOTICES.md` §2.
+
+- Development-time dependency licenses reproduced under
+  `rsl_rl/licenses/dependencies/` — including a GPL-licensed
+  `codespell-license.txt` — cover linting / tooling and are `⚠ TO
+  CONFIRM` as dev-only versus distributed; see
+  `THIRD_PARTY_NOTICES.md` §3.
+
+- PyTorch, NumPy, ONNX, and other Python runtime dependencies are not
+  bundled here; users install them separately via `pip`. Their
+  licenses apply as declared upstream.
+
+Per-file / per-asset provenance, upstream references, and the current
+`⚠ TO CONFIRM` items are enumerated in `THIRD_PARTY_NOTICES.md`. Do
+not cut a public release while any `⚠ TO CONFIRM` entry remains.

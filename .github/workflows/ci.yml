@@ -1,0 +1,143 @@
+# SPDX-License-Identifier: Apache-2.0
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint-and-scan:
+    name: Lint / py_compile / policy scans
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+
+      - name: Install lint tooling
+        run: |
+          python -m pip install --upgrade pip
+          pip install ruff pyflakes
+
+      - name: Ruff (extension + scripts; rsl_rl vendored fork excluded)
+        run: |
+          # rsl_rl/ is a vendored fork — lint separately or upstream.
+          ruff check --output-format=github exts scripts || true
+          # Enforce only pyflakes-style F-rules on first-party code to
+          # match the extension's Python-3.10 style without imposing a
+          # new style pass on the vendored PPO code.
+          ruff check --select F --output-format=github exts scripts
+
+      - name: Byte-compile every first-party Python file
+        run: |
+          set -e
+          # Include the vendored rsl_rl copy so we catch import-level
+          # syntax regressions after a sync, but do not lint style.
+          files=$(git ls-files '*.py')
+          if [ -z "$files" ]; then
+            echo "no .py files"
+            exit 0
+          fi
+          python -m py_compile $files
+
+      - name: Forbid committing training artifacts
+        run: |
+          set -e
+          # Deny-list per CONTRIBUTING.md and .gitignore.
+          if git ls-files | grep -iE \
+              '(^|/)logs/|(^|/)outputs/|(^|/)runs/|(^|/)wandb/|(^|/)\.wandb/|(^|/)videos/|(^|/)recordings/|(^|/)\.tensorboard/|\.pt$|\.pth$|\.ckpt$|\.onnx$|\.jit$|(^|/)events\.out\.tfevents\.'; then
+            echo "::error::Training artifacts must not be committed. See CONTRIBUTING.md#do-not-commit-training-artifacts."
+            exit 1
+          fi
+
+      - name: Forbid SDK binaries and CAD source
+        run: |
+          set -e
+          if git ls-files | grep -iE '\.(so|dll|dylib|lib|whl|bag|mcap|sldprt|sldasm|step|stp|iges|igs|x_t|x_b|f3d|blend)$'; then
+            echo "::error::SDK binaries, bag files, or CAD source must not be committed."
+            exit 1
+          fi
+
+      - name: License / TODO / proprietary scan
+        run: |
+          set -e
+          if grep -rniE 'proprietary|confidential|todo: license|unknown license' \
+               README.md NOTICE THIRD_PARTY_NOTICES.md CHANGELOG.md CONTRIBUTING.md SECURITY.md; then
+            echo "::error::Unresolved license / provenance markers in top-level docs"
+            exit 1
+          fi
+
+      - name: GPL text scan (must fail loudly outside the known whitelist)
+        run: |
+          set -e
+          # The vendored rsl_rl ships license texts for its dev-tool deps.
+          # codespell is GPL-licensed; per THIRD_PARTY_NOTICES.md §3 that
+          # file is the ONLY GPL text allowed in this tree and must
+          # remain classified as dev-only.
+          allowed='^rsl_rl/licenses/dependencies/codespell-license\.txt$'
+
+          hits=$(grep -RIl -E 'GNU General Public License|GPL-2\.0|GPL-3\.0|GPLv2|GPLv3' . \
+                  --exclude-dir='.git' \
+                  --exclude-dir='node_modules' \
+                  --exclude-dir='__pycache__' \
+                  2>/dev/null | sed 's|^\./||' || true)
+
+          bad=""
+          for f in $hits; do
+            if echo "$f" | grep -qE "$allowed"; then
+              continue
+            fi
+            bad="$bad $f"
+          done
+
+          if [ -n "$bad" ]; then
+            echo "::error::GPL-licensed text found outside the known whitelist:$bad"
+            echo "::error::If this is intentional, add the file to THIRD_PARTY_NOTICES.md §3 and update the whitelist in .github/workflows/ci.yml."
+            exit 1
+          fi
+
+      - name: EXIF sanity on documentation GIFs
+        run: |
+          sudo apt-get update && sudo apt-get install -y libimage-exiftool-perl
+          set -e
+          bad=0
+          shopt -s nullglob nocaseglob
+          for img in doc/*.gif; do
+            [ -f "$img" ] || continue
+            hits=$(exiftool "$img" | grep -iE '(gps|serial|make|model|software|author|artist|owner|copyright)' || true)
+            if [ -n "$hits" ]; then
+              echo "::error file=$img::EXIF / GIF metadata discloses: $hits"
+              bad=$((bad+1))
+            fi
+          done
+          if [ $bad -ne 0 ]; then exit 1; fi
+
+  install-dry-run:
+    name: pip install --dry-run
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+      - name: pip install --dry-run -e exts/bipedal_locomotion
+        run: |
+          python -m pip install --upgrade pip
+          # We cannot actually install because Isaac Sim / Isaac Lab
+          # are not on PyPI; the dry-run verifies the packaging
+          # metadata (setup.py, pyproject.toml) is at least valid.
+          pip install --dry-run -e exts/bipedal_locomotion || \
+            echo "::warning::dry-run failed — Isaac Sim / Isaac Lab deps are expected to be unresolvable in CI"
+      - name: pip install --dry-run -e rsl_rl
+        run: |
+          pip install --dry-run -e rsl_rl || \
+            echo "::warning::dry-run failed — inspect rsl_rl/setup.py"

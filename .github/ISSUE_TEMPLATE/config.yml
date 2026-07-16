@@ -1,0 +1,20 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability
+    url: mailto:contact@limxdynamics.com
+    about: >
+      Do NOT open a public issue for security reports. Email
+      contact@limxdynamics.com; see SECURITY.md for the full policy.
+  - name: Real-robot hardware / safety incident
+    url: mailto:contact@limxdynamics.com
+    about: >
+      Hardware or on-robot safety incidents are handled by LimX
+      product support, not this repository. Email
+      contact@limxdynamics.com with subject prefix
+      [tron2_rl_lab hardware].
+  - name: General questions
+    url: https://github.com/limx-tron2/tron2_rl_lab/discussions
+    about: >
+      Use Discussions for how-to questions, training-setup help, or
+      Isaac Sim / Isaac Lab integration quirks that are not yet a
+      defect.

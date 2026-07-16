@@ -1,0 +1,52 @@
+# SPDX-License-Identifier: Apache-2.0
+#
+# CODEOWNERS for tron2_rl_lab
+#
+# Order matters: the LAST matching pattern wins for each file.
+# Replace the placeholder handles below with real GitHub logins /
+# team names before enabling branch protection that requires code-
+# owner review.
+
+# Default owners: repo maintainers / meta files
+*                                          @limx-tron2/maintainers
+
+# Open-source scaffolding & policy
+/LICENSE                                   @limx-tron2/legal @limx-tron2/maintainers
+/NOTICE                                    @limx-tron2/legal @limx-tron2/maintainers
+/THIRD_PARTY_NOTICES.md                    @limx-tron2/legal @limx-tron2/maintainers
+/SECURITY.md                               @limx-tron2/security @limx-tron2/safety
+/CONTRIBUTING.md                           @limx-tron2/maintainers @limx-tron2/rl
+/CHANGELOG.md                              @limx-tron2/maintainers
+/README.md                                 @limx-tron2/maintainers @limx-tron2/rl
+
+# Build / packaging
+/pyproject.toml                            @limx-tron2/maintainers
+/exts/bipedal_locomotion/setup.py          @limx-tron2/legal @limx-tron2/maintainers
+/rsl_rl/setup.py                           @limx-tron2/legal @limx-tron2/rl
+
+# CI / templates
+/.github/                                  @limx-tron2/maintainers
+
+# Documentation media (content + legal audit before merge)
+/doc/                                      @limx-tron2/content @limx-tron2/legal @limx-tron2/robotics
+
+# RL training / task registrations / MDP terms
+/exts/bipedal_locomotion/bipedal_locomotion/tasks/         @limx-tron2/rl
+/exts/bipedal_locomotion/bipedal_locomotion/actuators/     @limx-tron2/rl @limx-tron2/robotics
+/exts/bipedal_locomotion/bipedal_locomotion/utils/         @limx-tron2/rl
+
+# Safety-adjacent code: reward / termination / action managers
+/exts/bipedal_locomotion/bipedal_locomotion/tasks/locomotion/limx_base_env_cfg.py  @limx-tron2/rl @limx-tron2/safety @limx-tron2/robotics
+/exts/bipedal_locomotion/bipedal_locomotion/tasks/**/mdp/                          @limx-tron2/rl @limx-tron2/safety
+
+# Robot cfg (Isaac Sim asset wiring)
+/exts/bipedal_locomotion/bipedal_locomotion/assets/config/                         @limx-tron2/rl @limx-tron2/robotics
+
+# Bundled STL / USD assets — extra review required for provenance
+/exts/bipedal_locomotion/bipedal_locomotion/assets/usd/                            @limx-tron2/robotics @limx-tron2/legal
+
+# Vendored rsl_rl fork — every change is an explicit sync or fix
+/rsl_rl/                                   @limx-tron2/rl @limx-tron2/legal
+
+# Training / play entry scripts (policy export happens here)
+/scripts/rsl_rl/                           @limx-tron2/rl @limx-tron2/safety

@@ -10,9 +10,6 @@
 > **Distribution:** the primary open-source copy of this repository is
 > hosted at
 > [`github.com/limx-tron2/tron2_rl_lab`](https://github.com/limx-tron2/tron2_rl_lab).
-> The internal GitLab at
-> `192.168.2.65:8022/rl/poc/tron/tron2_open_source/tron2_rl_lab` is a
-> private mirror used for LimX-internal development only.
 
 Reinforcement learning training stack for the LimX **TRON2A** bipedal
 robot, built on top of

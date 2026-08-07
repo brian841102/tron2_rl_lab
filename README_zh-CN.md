@@ -9,9 +9,6 @@
 
 > **发布渠道：** 本仓库的开源主副本托管于
 > [`github.com/limx-tron2/tron2_rl_lab`](https://github.com/limx-tron2/tron2_rl_lab)。
-> 内网 GitLab 地址
-> `192.168.2.65:8022/rl/poc/tron/tron2_open_source/tron2_rl_lab` 仅作为
-> LimX 内部开发使用的私有镜像。
 
 基于 [Isaac Lab](https://isaac-sim.github.io/IsaacLab/) 的 LimX **TRON2A** 双足机器人强化学习训练栈，使用 PPO 训练 locomotion 策略。本仓库专注于基础形态的平地（Flat）训练，支持 SF（sole-foot）与 WF（wheel-foot）两种机器人变体。
 

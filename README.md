@@ -7,7 +7,6 @@
 
 # tron2_rl_lab
 
-[English](README.md) | [中文](README_zh-CN.md)
 
 > **Distribution:** the primary open-source copy of this repository is
 > hosted at

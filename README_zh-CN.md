@@ -66,9 +66,9 @@
 - **不含训练日志、TensorBoard events 或 Weights & Biases 记录。**
   `logs/`、`wandb/`、`events.out.tfevents.*` 均被 `.gitignore`
   屏蔽并在 CI 中拦截。
-- **暂无测试套件。** CI 仅覆盖 `python -m py_compile`、`ruff`、
-  违禁产物扫描与许可扫描。在无头 GPU worker 上跑一次冒烟训练
-  作为后续工作跟踪。
+- **暂无自动化测试套件。** CI 覆盖 `python -m py_compile`、`ruff`、
+  违禁产物扫描与许可扫描；下方记录的无头训练冒烟测试已在
+  所列版本环境中通过。
 - **不含 Isaac Sim 的再分发。** 必须自行从 NVIDIA 获取 Isaac Sim
   5.1 并接受 NVIDIA 专有 EULA，才可安装本训练栈。本仓库不授予
   Isaac Sim 的任何许可。
@@ -93,21 +93,35 @@
 
 ## 环境要求
 
-- **Isaac Sim 5.1** + **Isaac Lab 2.3.1**
-- Python 3.10
+- **Isaac Sim 5.1.x** + **Isaac Lab 2.3.2**
+- Python 3.11（Isaac Sim 5.x 使用的 Python 版本）
 - GPU（推荐 ≥ 12 GB 显存，4096 envs 训练）
 
 ## 安装
 
 ```bash
-# 1. clone 仓库
-git clone <repo-url> tron1_rl_lab
-cd tron1_rl_lab
+# 0. 使用已预置的环境（Isaac Sim / Isaac Lab 已安装）。
+conda activate tronlab
 
-# 2. editable install extension 与 vendored rsl_rl
-pip install -e exts/bipedal_locomotion
-pip install -e rsl_rl
+# 1. clone 仓库
+git clone <repo-url> tron2_rl_lab
+cd tron2_rl_lab
+
+# 2. editable install extension 与 vendored rsl_rl。
+#    使用当前已激活环境中的 Python。
+python -m pip install -e exts/bipedal_locomotion
+python -m pip install -e rsl_rl
+
+# 3. CI lint 所需的可选开发工具。
+python -m pip install ruff
 ```
+
+请勿在此环境中重复安装另一份 Isaac Sim 或 Isaac Lab。
+训练与 play 脚本会先通过 `AppLauncher` 启动 Isaac Sim，再导入本扩展；
+在未初始化模拟器的普通 Python 进程中直接 `import bipedal_locomotion`
+可能因尚未加载模拟器的 `pxr` 模块而失败。
+该预置环境中 Isaac Sim kernel 的固定版本与可选 Python 工具存在已知的 `pip check`
+版本冲突；不要为解决这些冲突而替换 Isaac Sim 或 Isaac Lab 本体。
 
 ## IsaacSim 训练
 
@@ -237,34 +251,35 @@ python scripts/rsl_rl/train.py --task Isaac-Limx-SF-TRON2A-Blind-Flat-v0 --resum
 
 ```bash
 # 1. 对全部一方 Python 文件做字节码编译。
-python -m py_compile $(git ls-files '*.py')
+python -m py_compile $(git ls-files "*.py")
 
 # 2. Lint（仅一方子目录；内嵌的 rsl_rl fork 不做风格约束）。
-pip install ruff
+python -m pip install ruff
 ruff check --select F exts scripts
+# 当前代码树在 ruff 0.16.3 下会报告既有的 F 类问题；这些问题仅用于诊断，
+# 与已通过的 Isaac Sim 冒烟运行相互独立。
 
 # 3. Editable-install dry run。Isaac Sim / Isaac Lab 不在 PyPI，
 #    传递依赖解析可能失败；此步目的是校验 setup.py / pyproject.toml
 #    的元数据。
-pip install --dry-run -e exts/bipedal_locomotion
-pip install --dry-run -e rsl_rl
+python -m pip install --dry-run -e exts/bipedal_locomotion
+python -m pip install --dry-run -e rsl_rl
 
-# 4. 在装有 Isaac Sim / Isaac Lab 的机器上做可选的 import 冒烟：
-python -c "import bipedal_locomotion; print(bipedal_locomotion.__file__)"
-
-# 5. 确认没有训练产物 / SDK 二进制被暂存。
+# 4. 确认没有训练产物 / SDK 二进制被暂存。
 git ls-files | grep -iE \
-  '(^|/)logs/|(^|/)wandb/|\.pt$|\.pth$|\.ckpt$|\.onnx$|events\.out\.tfevents\.' \
+  "(^|/)logs/|(^|/)wandb/|\.pt$|\.pth$|\.ckpt$|\.onnx$|events\.out\.tfevents\." \
   && echo "!! training artifacts staged" && exit 1 || echo "ok"
 ```
 
-在装有 Isaac Sim 5.1 / Isaac Lab 2.3.1 的机器上，可以跑一次简短的
-端到端冒烟：
+在 Isaac Sim 5.1.x / Isaac Lab 2.3.2 环境中，下面的端到端冒烟命令会
+以无头模式启动 Isaac Sim，创建 16 个 SF 环境并完成 2 次训练迭代：
 
 ```bash
-python scripts/rsl_rl/train.py --task Isaac-Limx-SF-TRON2A-Blind-Flat-v0 \
-  --num_envs 16 --headless --max_iterations 2
+conda activate tronlab
+python scripts/rsl_rl/train.py --task Isaac-Limx-SF-TRON2A-Blind-Flat-v0 --num_envs 16 --headless --max_iterations 2
 ```
+
+运行会在 `logs/rsl_rl/` 下写入 checkpoint；该目录已被 Git 忽略，不应提交。
 
 ## 参考资料
 

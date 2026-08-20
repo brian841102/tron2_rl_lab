@@ -78,10 +78,10 @@ For a summary of local modifications relative to upstream, see
 - **No training logs, TensorBoard events, or Weights & Biases runs.**
   `logs/`, `wandb/`, `events.out.tfevents.*` are `.gitignore`'d and
   CI-blocked.
-- **No test suite yet.** CI covers `python -m py_compile`, `ruff`,
-  forbidden-artifact scans, and license scans only. Adding a smoke
-  training-step check on a headless GPU worker is tracked as
-  follow-up work.
+- **No automated test suite yet.** CI covers `python -m py_compile`,
+  `ruff`, forbidden-artifact scans, and license scans. A manual
+  headless training smoke test is documented and has been verified
+  with the versions listed below.
 - **No Isaac Sim redistribution.** You must obtain NVIDIA Isaac Sim
   5.1 independently and accept the NVIDIA proprietary EULA before
   installing this stack. Nothing here grants an Isaac Sim license.
@@ -110,21 +110,37 @@ below.
 
 ## Requirements
 
-- **Isaac Sim 5.1** + **Isaac Lab 2.3.1**
-- Python 3.10
+- **Isaac Sim 5.1.x** + **Isaac Lab 2.3.2**
+- Python 3.11 (the Python version used by Isaac Sim 5.x)
 - GPU (≥ 12 GB VRAM recommended for 4096-env training)
 
 ## Installation
 
 ```bash
-# 1. Clone the repository
-git clone <repo-url> tron1_rl_lab
-cd tron1_rl_lab
+# 0. Use the pre-provisioned environment (Isaac Sim / Isaac Lab are already installed).
+conda activate tronlab
 
-# 2. Editable install of the extension and the vendored rsl_rl
-pip install -e exts/bipedal_locomotion
-pip install -e rsl_rl
+# 1. Clone the repository
+git clone <repo-url> tron2_rl_lab
+cd tron2_rl_lab
+
+# 2. Editable install of the extension and the vendored rsl_rl.
+#    Use the Python from the activated environment.
+python -m pip install -e exts/bipedal_locomotion
+python -m pip install -e rsl_rl
+
+# 3. Optional developer tooling used by CI's lint check.
+python -m pip install ruff
 ```
+
+Do not install a second Isaac Sim or Isaac Lab copy into this environment.
+The training and play scripts instantiate Isaac Sim through `AppLauncher`
+before importing the extension; running `import bipedal_locomotion` directly
+from a plain Python process can fail because the simulator's `pxr` modules
+have not been initialized yet.
+The pre-provisioned Isaac Sim / Isaac Lab environment has some known `pip check`
+version conflicts between Isaac Sim kernel pins and optional Python tooling; do not
+replace the simulator packages to resolve them.
 
 ## Training in Isaac Sim
 
@@ -276,31 +292,35 @@ python -m py_compile $(git ls-files '*.py')
 
 # 2. Lint (first-party subtrees; the vendored rsl_rl fork is not
 #    style-gated).
-pip install ruff
+python -m pip install ruff
 ruff check --select F exts scripts
+# The current tree reports pre-existing F findings under ruff 0.16.3; these are
+# diagnostic and are separate from the successful Isaac Sim smoke run.
 
 # 3. Editable-install dry run. Isaac Sim / Isaac Lab are not on
 #    PyPI, so the transitive resolution may fail; the goal is to
 #    validate setup.py / pyproject.toml metadata.
-pip install --dry-run -e exts/bipedal_locomotion
-pip install --dry-run -e rsl_rl
+python -m pip install --dry-run -e exts/bipedal_locomotion
+python -m pip install --dry-run -e rsl_rl
 
-# 4. Optional import smoke on a machine WITH Isaac Sim / Isaac Lab:
-python -c "import bipedal_locomotion; print(bipedal_locomotion.__file__)"
-
-# 5. Ensure no training artifacts / SDK binaries are staged.
+# 4. Ensure no training artifacts / SDK binaries are staged.
 git ls-files | grep -iE \
   '(^|/)logs/|(^|/)wandb/|\.pt$|\.pth$|\.ckpt$|\.onnx$|events\.out\.tfevents\.' \
   && echo "!! training artifacts staged" && exit 1 || echo "ok"
 ```
 
-On a machine with Isaac Sim 5.1 / Isaac Lab 2.3.1 installed, a short
-end-to-end smoke run is:
+With Isaac Sim 5.1.x / Isaac Lab 2.3.2 installed, the short end-to-end
+smoke run below initializes Isaac Sim headlessly, creates 16 SF
+environments, and completes two training iterations:
 
 ```bash
+conda activate tronlab
 python scripts/rsl_rl/train.py --task Isaac-Limx-SF-TRON2A-Blind-Flat-v0 \
   --num_envs 16 --headless --max_iterations 2
 ```
+
+The run writes checkpoints under `logs/rsl_rl/`; this directory is ignored by
+Git and must not be committed.
 
 ## Reference
 

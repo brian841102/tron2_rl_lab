@@ -54,6 +54,65 @@ def export_mlp_as_onnx(mlp, path, name, input_dim):
     )
     print("Exported policy as onnx script to: ", path)
 
+
+class _EncoderPolicyWrapper(torch.nn.Module):
+    """Compose the observation encoder and actor into one deployment model."""
+
+    def __init__(self, encoder, policy, history_dim, obs_dim, command_dim):
+        super().__init__()
+        self.encoder = encoder
+        self.policy = policy
+        self.history_dim = history_dim
+        self.obs_dim = obs_dim
+        self.command_dim = command_dim
+
+    def forward(self, inputs):
+        history_end = self.history_dim
+        obs_end = history_end + self.obs_dim
+        obs_history = inputs[..., :history_end]
+        obs = inputs[..., history_end:obs_end]
+        commands = inputs[..., obs_end : obs_end + self.command_dim]
+        estimation = self.encoder(obs_history)
+        return self.policy(torch.cat((estimation, obs, commands), dim=-1))
+
+
+def export_policy_all_as_onnx(encoder, policy, path, history_dim, obs_dim, command_dim):
+    """Export encoder and actor as one ONNX graph.
+
+    The input layout is ``[flattened obsHistory, policy observation, commands]``.
+    It mirrors the tensors passed to the encoder and policy in ``play.py``.
+    """
+    os.makedirs(path, exist_ok=True)
+    export_path = os.path.join(path, "policy_all.onnx")
+
+    model = _EncoderPolicyWrapper(
+        copy.deepcopy(encoder).to("cpu"),
+        copy.deepcopy(policy).to("cpu"),
+        history_dim,
+        obs_dim,
+        command_dim,
+    )
+    model.eval()
+
+    input_dim = history_dim + obs_dim + command_dim
+    dummy_input = torch.randn(input_dim)
+    torch.onnx.export(
+        model,
+        dummy_input,
+        export_path,
+        verbose=True,
+        input_names=["policy_all_input"],
+        output_names=["policy_all_output"],
+        export_params=True,
+        opset_version=13,
+    )
+    print(
+        "Exported combined encoder+policy ONNX to: "
+        f"{export_path} (input_dim={input_dim}, history_dim={history_dim}, "
+        f"obs_dim={obs_dim}, command_dim={command_dim})"
+    )
+
+
 def export_policy_as_jit(actor_critic, path):
     os.makedirs(path, exist_ok=True)
     path = os.path.join(path, "policy.pt")

@@ -53,7 +53,12 @@ from isaaclab_tasks.utils import get_checkpoint_path, parse_env_cfg
 from isaaclab_rl.rsl_rl import RslRlOnPolicyRunnerCfg, RslRlVecEnvWrapper
 # Import extensions to set up environment tasks
 import bipedal_locomotion  # noqa: F401
-from bipedal_locomotion.utils.wrappers.rsl_rl import RslRlPpoAlgorithmMlpCfg, export_mlp_as_onnx, export_policy_as_jit
+from bipedal_locomotion.utils.wrappers.rsl_rl import (
+    RslRlPpoAlgorithmMlpCfg,
+    export_mlp_as_onnx,
+    export_policy_all_as_onnx,
+    export_policy_as_jit,
+)
 
 
 def main():
@@ -105,6 +110,14 @@ def main():
     policy = ppo_runner.get_inference_policy(device=env.unwrapped.device)
     encoder = ppo_runner.get_inference_encoder(device=env.unwrapped.device)
 
+    # Reset once before export so the combined graph uses the environment's
+    # actual observation layout rather than hard-coded task dimensions.
+    obs_dict = env.get_observations()
+    obs = obs_dict["policy"]
+    obs_history = obs_dict.get("obsHistory")
+    obs_history = obs_history.flatten(start_dim=1)
+    commands = obs_dict.get("commands")
+
     # export policy to onnx
     if EXPORT_POLICY:
         export_model_dir = os.path.join(os.path.dirname(resume_path), "exported")
@@ -124,13 +137,15 @@ def main():
             "encoder",
             ppo_runner.alg.encoder.num_input_dim,
         )
-    # reset environment
-    obs_dict = env.get_observations()
-    obs = obs_dict["policy"]
-    obs_history = obs_dict.get("obsHistory")
-    obs_history = obs_history.flatten(start_dim=1)
-    commands = obs_dict.get("commands") 
- 
+        export_policy_all_as_onnx(
+            ppo_runner.alg.encoder,
+            ppo_runner.alg.actor_critic.actor,
+            export_model_dir,
+            history_dim=obs_history.shape[-1],
+            obs_dim=obs.shape[-1],
+            command_dim=commands.shape[-1],
+        )
+
     # simulate environment
     while simulation_app.is_running():
         # run everything in inference mode

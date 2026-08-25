@@ -168,6 +168,7 @@ def distance_aligned(
     command_name: str = "base_velocity",
     vy_max: float = 0.8,
     decay_power: float = 1.0,
+    center_offsets: tuple[tuple[float, float, float], tuple[float, float, float]] | None = None,
 ) -> torch.Tensor:
     """Penalize feet distance from the desired distance."""
     asset: RigidObject = env.scene[asset_cfg.name]
@@ -177,8 +178,34 @@ def distance_aligned(
     base_quat = asset.data.root_quat_w
     heading_aligned = math_utils.yaw_quat(base_quat)
 
-    left_pos = math_utils.quat_apply_inverse(heading_aligned, asset.data.body_pos_w[:, left_idx])
-    right_pos = math_utils.quat_apply_inverse(heading_aligned, asset.data.body_pos_w[:, right_idx])
+    if center_offsets is None:
+        left_pos_w = asset.data.body_pos_w[:, left_idx]
+        right_pos_w = asset.data.body_pos_w[:, right_idx]
+    else:
+        if len(center_offsets) != 2 or any(len(offset) != 3 for offset in center_offsets):
+            raise ValueError("center_offsets must contain two three-dimensional offsets")
+        body_ids = [left_idx, right_idx]
+        body_pos_w = asset.data.body_link_pos_w[:, body_ids]
+        body_quat_w = asset.data.body_link_quat_w[:, body_ids]
+        offset_cache = getattr(env, "_distance_aligned_offset_cache", None)
+        if offset_cache is None:
+            offset_cache = {}
+            setattr(env, "_distance_aligned_offset_cache", offset_cache)
+        offset_key = tuple(tuple(offset) for offset in center_offsets)
+        cache_key = (asset_cfg.name, tuple(body_ids), offset_key, body_pos_w.device, body_pos_w.dtype)
+        offsets = offset_cache.get(cache_key)
+        if offsets is None:
+            offsets = torch.as_tensor(offset_key, dtype=body_pos_w.dtype, device=body_pos_w.device)
+            offset_cache[cache_key] = offsets
+        offsets = offsets.expand(body_pos_w.shape[0], -1, -1)
+        center_pos_w = body_pos_w + math_utils.quat_apply(
+            body_quat_w.reshape(-1, 4), offsets.reshape(-1, 3)
+        ).reshape_as(body_pos_w)
+        left_pos_w = center_pos_w[:, 0]
+        right_pos_w = center_pos_w[:, 1]
+
+    left_pos = math_utils.quat_apply_inverse(heading_aligned, left_pos_w)
+    right_pos = math_utils.quat_apply_inverse(heading_aligned, right_pos_w)
 
     distance_y = torch.abs(left_pos[:, 1] - right_pos[:, 1])
     d_min = torch.where(distance_y < min_dist, min_dist - distance_y, torch.tensor(0.0, device=distance_y.device))

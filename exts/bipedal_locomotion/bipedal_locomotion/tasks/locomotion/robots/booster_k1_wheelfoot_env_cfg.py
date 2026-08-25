@@ -43,6 +43,8 @@ K1_ALL_CONTROLLED_JOINTS = (
     + K1_WHEEL_JOINTS_RIGHT
 )
 K1_WHEEL_BODIES = ["left_wheel_link", "right_wheel_link"]
+# Local offsets from wheel-link origins to the tire crown centers.
+K1_WHEEL_CENTER_OFFSETS = ((0.0, -0.032, 0.0), (0.0, 0.032, 0.0))
 
 
 @configclass
@@ -391,9 +393,10 @@ class RewardsCfg:
         func=mdp.distance_aligned,
         weight=0.4,
         params={
-            "asset_cfg": SceneEntityCfg("robot", body_names=K1_WHEEL_BODIES),
-            "min_dist": 0.15,
-            "max_dist": 0.25,
+            "asset_cfg": SceneEntityCfg("robot", body_names=K1_WHEEL_BODIES, preserve_order=True),
+            "center_offsets": K1_WHEEL_CENTER_OFFSETS,
+            "min_dist": 0.19,
+            "max_dist": 0.24,
             "desired_dist": 0.192,
             "std": math.sqrt(0.01),
         },
